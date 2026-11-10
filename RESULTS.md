@@ -9,6 +9,7 @@
   - ส่งใหม่ด้วย `curl.exe -H "@auth.txt" https://quickpizza.grafana.com/api/tools` (auth.txt มีบรรทัดเดียวคือ `Authorization: token abcdef0123456789`) ได้ `{"tools":["Knife","Pizza cutter","Scissors"]}`
 - Step 0.4, the name of your pizza: The Hard Margherita
   - `curl.exe -H "@auth.txt" -d "@veg.json" https://quickpizza.grafana.com/api/pizza` ได้ pizza id 5910 แป้ง Thin ตัดด้วย Knife ingredients 6 อย่างคือ Olive oil, Roma tomatoes, Mozzarella, Green peppers, Broccoli และ Mushrooms ทุกตัวมี `"vegetarian":true` และ response มี `"vegetarian":true` กับ `"calories":400`
+  - Step 0.5: ลองส่ง request ชุดเดิมจาก Python shell ด้วย requests ได้ `res.status_code` = 200, `res.headers["Content-Type"]` = `'application/json'`, `type(res.json())` เป็น `dict`, ชื่อแรกคือ `'Americana'` ส่วน `/api/tools` ที่ส่ง `headers=auth` ได้ 200 กับ tools 3 อย่าง และ POST `/api/pizza` ด้วย `json={"mustBeVegetarian": True}` ได้ 200 แต่รอบนี้ได้พิซซ่าชื่อ `'A Fluffy Napoletana'` ไม่ใช่ชื่อเดิม เพราะ QuickPizza สุ่มพิซซ่าใหม่ทุกครั้ง
 - Step 0.12, results of the three runs without a session (optional):
 - Step 0.16, blocks of "how many of the three tools are excluded":
 
