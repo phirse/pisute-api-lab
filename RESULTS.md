@@ -30,6 +30,17 @@
 - Severity: Major เพราะเป็น input ที่ client ส่งได้ตามปกติผ่าน field `excludedTools` แต่ server กลับพังด้วย 500 แทนที่จะปฏิเสธ input ทำให้ client แยกไม่ออกว่า request ผิดหรือ server ล่ม และไม่มี message ไปบอกผู้ใช้ ซึ่งขัดกับ requirement ของ product owner ตรง ๆ ที่ไม่ถึงขั้น Critical เพราะ server ยังทำงานต่อได้ ไม่มีข้อมูลเสียหาย และเกิดเฉพาะตอน exclude ครบทุก tool
 
 ## Part A
+- Step A2, error message ของแต่ละ block ที่หาด้วย curl ก่อนเขียน test:
+  - ใช้ user ของตัวเอง ไม่ใช้ public token: สร้าง `user.json` (`{"username": "lab-3e91a25dfadc", "password": "Pizza-2026"}`) แล้วรัน `curl.exe -i -c cookies.txt -d "@user.json" https://quickpizza.grafana.com/api/users` ได้ 201 ต่อด้วย `curl.exe -b cookies.txt -c cookies.txt -d "@user.json" https://quickpizza.grafana.com/api/users/token/login` ได้ token ยาว 16 ตัว เอาไปใส่ไฟล์ header `mytoken.txt` (ไม่ได้ commit เพราะเป็น token) ทุก request หลังจากนั้นใส่ `-b cookies.txt` เพื่อส่ง cookie AWSALB กลับไปแบบเดียวกับ requests.Session ไม่อย่างนั้นอาจไปเจอ server ที่ไม่รู้จัก user นี้แบบใน Step 0.12
+  - ขอพิซซ่าใหม่ได้ pizza id 5441 แล้วส่ง `curl.exe -i -b cookies.txt -H "@mytoken.txt" -d "@rating-....json" https://quickpizza.grafana.com/api/ratings` ได้ผลดังนี้
+    - `{"pizza_id": 5441, "stars": 3.5}` ได้ 400 `{"error":"json: cannot unmarshal number 3.5 into Go struct field Rating.stars of type int"}`
+    - `{"pizza_id": 5441, "stars": "3"}` ได้ 400 `{"error":"json: cannot unmarshal string into Go struct field Rating.stars of type int"}`
+    - `{"pizza_id": 5441}` (ไม่มี stars) ได้ 400 `{"error":"number of stars must be between 1 and 5 (inclusive)"}`
+    - `{"pizza_id": 999999999, "stars": 3}` ได้ 400 `{"error":"pizza ID 999999999 not found"}`
+    - rating-base.json แบบไม่ส่ง token และแบบ `-H "Authorization: token short"` ได้ 401 `{"error":"authentication failed"}` ทั้งคู่
+    - rating-base.json กับ token ของตัวเองได้ 201 `{"id":2499,"stars":3,"pizza_id":5441}` แล้วลบทิ้งด้วย `curl.exe -X DELETE` ได้ 204
+  - ข้อสังเกต: ถ้าไม่ส่ง stars จะได้ message เดียวกับ stars = 0 เพราะ Go ให้ค่า 0 กับ field ที่ไม่ได้ส่งมาก่อนจะ validate client จึงไม่รู้ว่าที่จริงลืมส่ง field ส่วน 3.5 กับ "3" ได้ error ของ Go json decoder มาตรง ๆ ซึ่งเผยชื่อ struct ภายใน (`Rating.stars`) ให้คนนอกเห็นด้วย
+  - test_create_rating.py มีครบ 9 tests แล้ว `pytest -v` ได้ `25 passed, 1 xfailed`
 - Step A4, status codes when the other user reads, changes and deletes:
 
 ## Part B

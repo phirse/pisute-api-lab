@@ -10,3 +10,26 @@
 | C2 Type of `stars` | whole number (base), decimal, text, missing | 3, 3.5, "3", no field |
 | C3 Pizza | exists (base), does not exist | a new pizza, 999999999 |
 | C4 Token | the user's own (base), none, wrong length | from `auth`, no header, `token short` |
+
+### Block และ test ที่ครอบคลุม
+
+ทุก test อยู่ใน `test_create_rating.py` แต่ละ test เปลี่ยน characteristic ทีละตัวจาก base แล้วคงตัวอื่นไว้ที่ base คือ 3 stars แบบจำนวนเต็ม, pizza ใหม่จาก fixture `pizza_id` และ token ของ user เองจาก fixture `auth`
+
+| Characteristic | Block | Value | ผลที่ API ตอบ | Test ที่ครอบคลุม |
+|---|---|---|---|---|
+| C1 Value of `stars` | below 1 | 0 | 400 `number of stars must be between 1 and 5 (inclusive)` | `test_stars_out_of_range[0]` |
+| | 1 to 5 (base) | 3 | 201 ได้ rating ใหม่ | `test_base_choice_is_saved` |
+| | above 5 | 6 | 400 `number of stars must be between 1 and 5 (inclusive)` | `test_stars_out_of_range[6]` |
+| C2 Type of `stars` | whole number (base) | 3 | 201 | `test_base_choice_is_saved` |
+| | decimal | 3.5 | 400 `json: cannot unmarshal number 3.5 into Go struct field Rating.stars of type int` | `test_decimal_stars_are_refused` |
+| | text | "3" | 400 `json: cannot unmarshal string into Go struct field Rating.stars of type int` | `test_text_stars_are_refused` |
+| | missing | no field | 400 `number of stars must be between 1 and 5 (inclusive)` | `test_missing_stars_are_refused` |
+| C3 Pizza | exists (base) | a new pizza | 201 | `test_base_choice_is_saved` |
+| | does not exist | 999999999 | 400 `pizza ID 999999999 not found` | `test_unknown_pizza_is_refused` |
+| C4 Token | the user's own (base) | from `auth` | 201 | `test_base_choice_is_saved` |
+| | none | no header | 401 `authentication failed` | `test_rating_without_token_is_refused` |
+| | wrong length | `token short` | 401 `authentication failed` | `test_rating_with_short_token_is_refused` |
+
+base choice coverage ใช้ 1 + 2 + 3 + 1 + 2 = 9 tests คือ base test 1 ตัว บวกจำนวน block ที่ไม่ใช่ base ของ C1, C2, C3 และ C4 ตรงกับ 9 tests ใน `test_create_rating.py` ถ้าทำ all combinations coverage จะต้องใช้ 3 × 4 × 2 × 3 = 72 tests
+
+error message ทุกตัวหาด้วย curl ก่อนเขียน test โดย body ที่ใช้อยู่ในไฟล์ `user.json` และ `rating-*.json` รายละเอียดอยู่ใน RESULTS.md
