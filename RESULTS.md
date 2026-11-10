@@ -50,11 +50,33 @@
   - หลังจากนั้น owner อ่านได้ 200 และได้ `{'id': 3436, 'stars': 3, 'pizza_id': 7421}` เหมือนเดิม แปลว่า user อีกคนอ่าน แก้ หรือลบ rating ไม่ได้จริง ทั้ง 3 tests ใน test_rating_owner.py ผ่าน และ `pytest -v` ได้ `32 passed, 1 xfailed`
 
 ## Part B
-1.
-2.
-3.
-4.
-5.
-6.
-7.
-8.
+1. failure ที่ test ผ่าน server จริงเจอได้ แต่ unit test ที่ใช้ stub เจอไม่ได้
+   - ปัญหาจาก configuration และ infrastructure ระหว่างส่วนต่าง ๆ ของระบบ เช่น load balancer ที่กระจาย request ไปหลาย server ซึ่งเก็บ user แยกกัน ใน Step 0.12 login ได้ 401 ทั้ง 3 รอบทั้งที่โค้ดของแต่ละส่วนไม่ได้ผิด ถ้าใช้ stub แทน server จริงก็ไม่มี load balancer ปัญหานี้จึงไม่มีทางโผล่ออกมา
+   - fault ที่รอยต่อระหว่าง module เมื่อทำงานร่วมกันจริง เช่น Defect 1 ที่ request วิ่งผ่าน router, handler ที่สุ่ม tool และ middleware ที่ดัก panic จนได้ 500 body ว่าง หรือ error message จริงที่ Go json decoder สร้างขึ้น (`json: cannot unmarshal ...`) stub ตอบได้แค่สิ่งที่คนเขียน stub คิดไว้ล่วงหน้า เช่นตอบ 400 สวย ๆ จึงไม่เห็นพฤติกรรมจริงแบบนี้
+   - เหตุผลที่ยังต้องเขียน unit test ที่ใช้ stub ด้วย: เร็วและ deterministic ไม่ขึ้นกับ network หรือคนอื่นที่ใช้ server ร่วมกัน (test ชุดนี้ส่ง request ราว 140 ครั้ง ใช้เวลาประมาณ 50 วินาที และพังได้ถ้า QuickPizza ล่ม) ชี้ได้ชัดว่าผิดที่ function ไหน และจำลองกรณีที่สร้างผ่าน API จริงได้ยาก เช่น database error หรือ timeout จึงเหมาะกับการรันทุกครั้งที่แก้โค้ด
+2. public token เป็นของทุกคนที่ฝึกบน QuickPizza ข้อมูลที่ผูกกับมันจึงเป็นของส่วนรวม (ในข้อ 7 ข้อมูลนี้มี ratings ของคนอื่นอยู่ 50 รายการ) ถ้า test ใช้ public token จะมีปัญหาดังนี้
+   - test ไม่เป็นอิสระต่อกัน: คนอื่นอาจเพิ่ม แก้ หรือลบ ratings ระหว่างที่ test รัน assertion อย่าง `res.json() == {"ratings": []}` จะไม่มีทางผ่าน และผลจะเปลี่ยนไปตามสิ่งที่คนอื่นทำ (flaky)
+   - test ของเราจะไปแก้หรือลบข้อมูลของคนอื่น ซึ่งผิดกติกาของ lab
+   - user ใหม่ที่ชื่อ `lab-` ตามด้วย uuid ไม่ซ้ำใคร เริ่มจากสถานะว่างที่รู้แน่นอน ทุก test จึงรันเดี่ยว รันซ้ำ หรือสลับลำดับได้ และ fixture `rating` ลบ rating ของตัวเองหลังจบ test ไม่ทิ้งข้อมูลไว้
+   - ใน Project 2: ให้ทุก test สร้างข้อมูลของตัวเองผ่าน fixture เช่น customer, cart หรือ booking ที่ตั้งชื่อด้วย uuid หรือวันเวลา (เช่น `p2-<uuid>@example.com`) yield ให้ test ใช้แล้วลบทิ้งหลังจบ test ถ้า API ลบได้ แตะเฉพาะข้อมูลที่ test ของกลุ่มเราสร้างเอง ไม่ไปแก้สินค้า order หรือการจองของกลุ่มอื่น ส่วน password และ API key ของกลุ่มให้อ่านจาก environment variable ไม่ใส่ไว้ใน repo
+3. QuickPizza มี server หลายตัวอยู่หลัง load balancer และแต่ละตัวเก็บ user กับ token ของตัวเอง ตอนตอบครั้งแรก load balancer ส่ง cookie `AWSALB` กลับมาด้วย (เห็นใน Step 0.2) ถ้าส่ง cookie นี้กลับไปทุกครั้ง request จะไปถึง server ตัวเดิมเสมอ `requests.Session` เก็บ cookie ไว้และส่งกลับให้เองทุก request พอ fixture `api` เป็น session เดียวตลอดการรัน (`scope="session"`) การสร้าง user, login, ขอพิซซ่า และจัดการ rating ของทุก test จึงเกิดบน server ตัวเดียวกัน
+   - Step 0.12: รัน test ที่ส่งแต่ละ request ด้วย `requests.post` แยกกัน 3 รอบ ได้ FAILED ทั้ง 3 รอบ ทุกรอบสร้าง user ได้ 201 แต่ login ได้ 401 (`assert 401 == 200`) เพราะ login ไปตกที่ server อีกตัวที่ไม่มี user นี้ test แบบนี้จะผ่านเฉพาะตอนที่บังเอิญได้ server ตัวเดิม ผลจึงเปลี่ยนได้ทั้งที่โค้ดไม่เปลี่ยน ซึ่งก็คือ flaky test
+4. block ที่เจอ defect คือ "3 tools" (exclude ครบทั้ง Knife, Pizza cutter และ Scissors) ได้ 500 และ body ว่าง ส่วน block 0, 1 และ 2 tools ได้ 200 ตามปกติ
+   - 500 หมายถึงฝั่ง server ผิดพลาดเอง app ที่เรียก API จึงแยกไม่ออกว่า request ผิดหรือ server มีปัญหา อาจ retry ไปเรื่อย ๆ ทั้งที่ส่งกี่ครั้งก็พังเหมือนเดิม body ที่ว่างทำให้โค้ดที่เรียก `res.json()` พังตามไปด้วยถ้าไม่ได้ดัก exception ไว้ และไม่มีข้อความให้แสดงผู้ใช้ ผู้ใช้จึงเห็นแค่ว่ามีข้อผิดพลาดโดยไม่รู้ว่าต้องแก้อะไร
+   - 400 พร้อม message บอกชัดว่าความผิดอยู่ที่ request (4xx) ไม่ควร retry ด้วยค่าเดิม app เอา message ไปแสดงหรือบอกผู้ใช้ให้ปลดบาง tool ออกได้ทันที และ body เป็น JSON รูปแบบ `{"error": ...}` แบบเดียวกับ error อื่นของ API
+   - ที่เก็บ test ไว้เป็น xfail แทนการลบ: test นี้เป็นหลักฐานว่า defect ยังอยู่ ถ้าลบทิ้ง defect ก็หายไปจากสายตาและอาจถูกลืม xfail ทำให้ชุด test ยังเขียว (`32 passed, 1 xfailed`) โดยที่ defect ยังแสดงอยู่ในทุกการรัน และเพราะใส่ `strict=True` วันที่ QuickPizza แก้ defect test จะ XPASS แล้วการรันจะ fail เป็นสัญญาณให้ถอด mark ออก test นี้ก็จะกลายเป็น regression test ปกติที่คอยกันไม่ให้ defect กลับมาอีก
+5. base choice coverage ต้องใช้ 9 tests ส่วน all combinations coverage ต้องใช้ 72 tests
+   - จำนวน block: C1 = 3 (below 1, 1 to 5, above 5), C2 = 4 (whole number, decimal, text, missing), C3 = 2 (exists, does not exist), C4 = 3 (the user's own, none, wrong length)
+   - base choice: base test 1 ตัว แล้วเปลี่ยน characteristic ทีละตัวไปที่ block ที่ไม่ใช่ base ได้อีก (3−1) + (4−1) + (2−1) + (3−1) = 2 + 3 + 1 + 2 = 8 tests รวมเป็น 1 + 8 = 9 tests ตรงกับ 9 tests ใน test_create_rating.py
+   - all combinations: เอาทุก block ของทุก characteristic มาจับกันครบทุกแบบ 3 × 4 × 2 × 3 = 72 tests
+6. ได้ read = 404 (`{"error":"not found"}`), change = 400 (`{"error":"rating ID 3436 not found"}`) และ delete = 400 (`{"error":"rating ID 3436 not found"}`)
+   - ที่คาดไว้คือ 404 ทั้งสามกรณี (หรือ 403 Forbidden ถ้ายอมให้คนอื่นรู้ว่า rating นี้มีอยู่) สำหรับ user อีกคน rating นี้เหมือนไม่มีอยู่ GET จึงตอบ 404 ได้ถูกต้อง และการตอบ 404 แทน 403 ยังไม่บอกคนนอกด้วยว่า id นี้มีอยู่จริง
+   - PUT กับ DELETE ตอบ 400 Bad Request ซึ่งแปลว่า request ผิดรูปแบบ แต่ทั้งสอง request ถูกต้องทุกอย่าง (`{"stars": 5}` ผ่าน validation) แค่ rating ไม่ใช่ของ user คนนี้ message ยังบอกว่า "not found" แต่ status กลับไม่ตรงกับ message และไม่ตรงกับ GET
+   - ถือเป็น defect เล็กน้อย (Minor) เรื่องความหมายและความสอดคล้องของ status code เพราะ client แยกไม่ออกว่า 400 มาจาก input ผิด (stars = 6 ก็ได้ 400 เหมือนกัน) หรือหา rating ไม่เจอ แต่ไม่ใช่ security defect เพราะการป้องกันยังได้ผล rating ไม่ได้ถูกอ่าน แก้ หรือลบจริง (owner อ่านกลับได้ 3 stars เท่าเดิม) test ใน A4 จึงผ่าน เพราะชีทให้เช็คแค่ว่าอยู่ในช่วง 400–499
+7. `curl.exe -H "@madeup.txt" https://quickpizza.grafana.com/api/ratings` ได้ `HTTP/1.1 200 OK` กับ `{"ratings":[...]}` ที่มี ratings 50 รายการ เช่น `{"id":1,"stars":5,"pizza_id":1}` และ `{"id":2,"stars":1,"pizza_id":2}` แทนที่จะได้ 401
+   - ลองเทียบบน server ตัวเดียวกัน (ใช้ cookie jar) ได้ 50 รายการ id ตรงกับตอนใช้ public token `abcdef0123456789` ทุกตัว ลอง token แต่งอีกตัว `zzzzzzzzzzzzzzzz` ก็ได้ 50 รายการเหมือนกัน แปลว่า server รับ token อะไรก็ได้ที่ยาว 16 ตัวแล้วถือว่าเป็น default user ที่ทุกคนใช้ร่วมกัน ส่วน token ที่ยาวผิด เช่น `token short` ยังได้ 401 ใน source (`pkg/database/catalog.go`) ถ้าหา token ใน database ไม่เจอจะคืน user id 1 แทน เพื่อให้หน้าเว็บที่สุ่ม token เองใช้งานได้
+   - เป็น defect ด้าน security (Broken Authentication, OWASP API2:2023) เพราะ server ไม่ได้ตรวจว่า token นั้นออกให้ใครจริง request ที่ไม่ได้ login ก็ผ่านการยืนยันตัวตนได้ ใน QuickPizza อาจตั้งใจทำไว้เพื่อ demo แต่ถ้าเป็นระบบจริงถือว่าร้ายแรง
+   - บนระบบจริง คนแปลกหน้าที่ไม่มีบัญชีเลยจะแต่ง token ขึ้นมาเองแล้วเรียก API ได้ทันที อ่านข้อมูลของบัญชีที่ token ไปตกได้ เช่นประวัติการสั่งซื้อหรือข้อมูลส่วนตัว สร้างข้อมูลในนามของบัญชีนั้น และใช้ API ได้โดยไม่มีใครตามตัวได้เพราะไม่ผูกกับบัญชีจริงของใคร ใน lab นี้ใช้ token นี้อ่านอย่างเดียวตามที่ชีทกำหนด
+8. 
+   - API test เช็คได้ดีกว่า: input ที่หน้าเว็บปกติไม่ส่ง (bypass testing) พร้อม status code และ error message ที่ตอบกลับมาตรง ๆ เช่น stars = 6, 3.5 หรือ "3" ใน Step A2 และ user อีกคนที่พยายามแก้ rating ของคนอื่นใน A4 คนร้ายไม่จำเป็นต้องผ่านหน้าเว็บ server จึงต้องปฏิเสธเองให้ได้ API test เช็คเรื่องนี้ได้ตรงกว่า เร็วกว่า และ flaky น้อยกว่า test ผ่านหน้าเว็บ
+   - เช็คได้เฉพาะ test ผ่านหน้าเว็บ: สิ่งที่ผู้ใช้เห็นจริงบนจอ เช่น หน้าเว็บแสดงชื่อพิซซ่าและ ingredients ที่ได้จาก API ถูกไหม ฟอร์มส่งค่าที่ผู้ใช้เลือกไปถูกไหม ถ้า API ตอบ 500 แบบ Defect 1 หน้าเว็บแสดงอะไรให้ผู้ใช้ และ layout ใช้งานได้ไหม API test ไม่ได้รัน JavaScript และไม่ได้ render หน้าเว็บ จึงมองไม่เห็นสิ่งเหล่านี้
