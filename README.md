@@ -44,3 +44,13 @@ error message ทุกตัวหาด้วย curl ก่อนเขีย
 | 1 | 200 | 1 |
 | 5 | 200 | 5 |
 | 6 | 400 `number of stars must be between 1 and 5 (inclusive)` | 3 (ไม่เปลี่ยน) |
+
+## ใครแก้ rating ได้บ้าง
+
+`test_rating_owner.py` ใช้ fixture `auth` เป็นเจ้าของ rating และ `other_auth` เป็น user อีกคน (ทั้งคู่สร้างจาก `log_in_new_user` ใน conftest.py) แต่ละ test ให้ user อีกคนลองอ่าน แก้ หรือลบ rating ของเจ้าของ แล้วเช็คว่าโดนปฏิเสธด้วย status 400–499 จากนั้นให้เจ้าของอ่าน rating อีกครั้งเพื่อดูว่าไม่มีอะไรเปลี่ยน
+
+| Test | สิ่งที่ user อีกคนทำ | status ที่ได้ |
+|---|---|---|
+| `test_other_user_cannot_read_rating` | GET `/api/ratings/{id}` | 404 |
+| `test_other_user_cannot_change_rating` | PUT `/api/ratings/{id}` ด้วย `{"stars": 5}` | 400 |
+| `test_other_user_cannot_delete_rating` | DELETE `/api/ratings/{id}` | 400 |

@@ -41,7 +41,13 @@
     - rating-base.json กับ token ของตัวเองได้ 201 `{"id":2499,"stars":3,"pizza_id":5441}` แล้วลบทิ้งด้วย `curl.exe -X DELETE` ได้ 204
   - ข้อสังเกต: ถ้าไม่ส่ง stars จะได้ message เดียวกับ stars = 0 เพราะ Go ให้ค่า 0 กับ field ที่ไม่ได้ส่งมาก่อนจะ validate client จึงไม่รู้ว่าที่จริงลืมส่ง field ส่วน 3.5 กับ "3" ได้ error ของ Go json decoder มาตรง ๆ ซึ่งเผยชื่อ struct ภายใน (`Rating.stars`) ให้คนนอกเห็นด้วย
   - test_create_rating.py มีครบ 9 tests แล้ว `pytest -v` ได้ `25 passed, 1 xfailed`
-- Step A4, status codes when the other user reads, changes and deletes:
+- Step A3, boundary values ของ update: stars 0 และ 6 ได้ 400 `{"error":"number of stars must be between 1 and 5 (inclusive)"}` และอ่านกลับแล้ว rating ยังเป็น 3 stars เท่าเดิม ส่วน stars 1 และ 5 ได้ 200 และอ่านกลับได้ค่าใหม่ `pytest -v` ได้ `29 passed, 1 xfailed`
+- Step A4, status codes when the other user reads, changes and deletes: read = 404, change = 400, delete = 400
+  - owner สร้าง rating `{'id': 3436, 'stars': 3, 'pizza_id': 7421}` แล้วให้ user อีกคน (ใช้ session เดียวกัน จึงอยู่บน server ตัวเดียวกัน) ลองแตะ rating นี้
+    - GET `/api/ratings/3436` ได้ `404` `{"error":"not found"}`
+    - PUT `/api/ratings/3436` ด้วย `{"stars": 5}` ได้ `400` `{"error":"rating ID 3436 not found"}`
+    - DELETE `/api/ratings/3436` ได้ `400` `{"error":"rating ID 3436 not found"}`
+  - หลังจากนั้น owner อ่านได้ 200 และได้ `{'id': 3436, 'stars': 3, 'pizza_id': 7421}` เหมือนเดิม แปลว่า user อีกคนอ่าน แก้ หรือลบ rating ไม่ได้จริง ทั้ง 3 tests ใน test_rating_owner.py ผ่าน และ `pytest -v` ได้ `32 passed, 1 xfailed`
 
 ## Part B
 1.
