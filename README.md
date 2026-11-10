@@ -33,3 +33,14 @@
 base choice coverage ใช้ 1 + 2 + 3 + 1 + 2 = 9 tests คือ base test 1 ตัว บวกจำนวน block ที่ไม่ใช่ base ของ C1, C2, C3 และ C4 ตรงกับ 9 tests ใน `test_create_rating.py` ถ้าทำ all combinations coverage จะต้องใช้ 3 × 4 × 2 × 3 = 72 tests
 
 error message ทุกตัวหาด้วย curl ก่อนเขียน test โดย body ที่ใช้อยู่ในไฟล์ `user.json` และ `rating-*.json` รายละเอียดอยู่ใน RESULTS.md
+
+## Boundary values ของการแก้ rating
+
+`PUT /api/ratings/{id}` รับ stars 1 ถึง 5 จึงทดสอบค่าทั้งสองฝั่งของขอบทั้งสองด้าน ใน `test_update_rating.py::test_update_stars_at_the_boundaries` ซึ่ง parametrize เป็นคู่ของ stars กับ status ที่คาด ทุกรอบเริ่มจาก rating 3 stars ของ fixture `rating` และอ่าน rating กลับมาหลังแก้ทุกครั้ง เพราะการแก้ที่ถูกปฏิเสธต้องไม่ทำให้ rating เปลี่ยน
+
+| stars | status ที่คาด | stars ที่อ่านกลับมา |
+|---|---|---|
+| 0 | 400 `number of stars must be between 1 and 5 (inclusive)` | 3 (ไม่เปลี่ยน) |
+| 1 | 200 | 1 |
+| 5 | 200 | 5 |
+| 6 | 400 `number of stars must be between 1 and 5 (inclusive)` | 3 (ไม่เปลี่ยน) |
