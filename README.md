@@ -43,7 +43,7 @@ pytest -v
 pytest -v --html=report.html --self-contained-html
 ```
 
-ทุก test สร้าง user และข้อมูลที่ต้องใช้เองผ่าน fixture จึงรันแยกทีละตัวหรือสลับลำดับได้ เช่น `pytest -v test_ratings.py::test_delete_rating`
+test ที่ต้องใช้ข้อมูลจะสร้างข้อมูลนั้นเองผ่าน fixture ทุก test จึงรันแยกทีละตัวหรือสลับลำดับได้ เช่น `pytest -v test_ratings.py::test_delete_rating`
 
 การรันทั้งชุดส่ง request ไปที่ QuickPizza 140 ครั้งและใช้เวลาประมาณ 50 วินาที QuickPizza เป็น demo ที่หลายคนใช้ร่วมกันจึงไม่ควรรันวนซ้ำ
 
@@ -71,7 +71,7 @@ pytest -v --html=report.html --self-contained-html
 
 ## กติกาที่ทำตาม
 
-- test ที่สร้างหรือแก้ข้อมูลจะสร้าง user ใหม่ชื่อ `lab-` ตามด้วย uuid 12 ตัวอักษรก่อนเสมอ แล้วใช้ token ที่ได้จากการ login ของ user นั้น
+- test ที่ต้องใช้ user จะสร้าง user ใหม่ของตัวเองทุกครั้ง ชื่อ `lab-` ตามด้วย uuid 12 ตัวอักษร แล้วใช้ token ที่ได้จากการ login ของ user นั้น
 - ไม่ใช้ public token `abcdef0123456789` หรือ token ที่แต่งขึ้นไปสร้างหรือแก้ rating
 - fixture `rating` ลบ rating ที่สร้างไว้ทุกครั้งหลังจบ test
 
