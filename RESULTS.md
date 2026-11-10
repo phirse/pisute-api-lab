@@ -7,7 +7,8 @@
 - Step 0.3, status code of the request without a token: 401 (Unauthorized)
   - `curl.exe -i https://quickpizza.grafana.com/api/tools` ได้ `HTTP/1.1 401 Unauthorized` และ body `{"error":"authentication failed"}` เพราะ request ไม่มี header Authorization
   - ส่งใหม่ด้วย `curl.exe -H "@auth.txt" https://quickpizza.grafana.com/api/tools` (auth.txt มีบรรทัดเดียวคือ `Authorization: token abcdef0123456789`) ได้ `{"tools":["Knife","Pizza cutter","Scissors"]}`
-- Step 0.4, the name of your pizza:
+- Step 0.4, the name of your pizza: The Hard Margherita
+  - `curl.exe -H "@auth.txt" -d "@veg.json" https://quickpizza.grafana.com/api/pizza` ได้ pizza id 5910 แป้ง Thin ตัดด้วย Knife ingredients 6 อย่างคือ Olive oil, Roma tomatoes, Mozzarella, Green peppers, Broccoli และ Mushrooms ทุกตัวมี `"vegetarian":true` และ response มี `"vegetarian":true` กับ `"calories":400`
 - Step 0.12, results of the three runs without a session (optional):
 - Step 0.16, blocks of "how many of the three tools are excluded":
 
