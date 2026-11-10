@@ -10,8 +10,9 @@
 - Step 0.4, the name of your pizza: The Hard Margherita
   - `curl.exe -H "@auth.txt" -d "@veg.json" https://quickpizza.grafana.com/api/pizza` ได้ pizza id 5910 แป้ง Thin ตัดด้วย Knife ingredients 6 อย่างคือ Olive oil, Roma tomatoes, Mozzarella, Green peppers, Broccoli และ Mushrooms ทุกตัวมี `"vegetarian":true` และ response มี `"vegetarian":true` กับ `"calories":400`
   - Step 0.5: ลองส่ง request ชุดเดิมจาก Python shell ด้วย requests ได้ `res.status_code` = 200, `res.headers["Content-Type"]` = `'application/json'`, `type(res.json())` เป็น `dict`, ชื่อแรกคือ `'Americana'` ส่วน `/api/tools` ที่ส่ง `headers=auth` ได้ 200 กับ tools 3 อย่าง และ POST `/api/pizza` ด้วย `json={"mustBeVegetarian": True}` ได้ 200 แต่รอบนี้ได้พิซซ่าชื่อ `'A Fluffy Napoletana'` ไม่ใช่ชื่อเดิม เพราะ QuickPizza สุ่มพิซซ่าใหม่ทุกครั้ง
-- Step 0.12, results of the three runs without a session (optional):
+- Step 0.12, results of the three runs without a session (optional): fail ทั้ง 3 รอบ (ผ่าน 0 จาก 3)
   - Step 0.9: ลองทำใน Python shell ด้วย `requests.Session()` ได้ชื่อ user ใหม่ `'lab-d2187b2cd309'` สร้าง user ได้ `(201, {'id': 259, 'username': 'lab-d2187b2cd309'})` login แล้วได้ token ยาว 16 ตัว อ่าน ratings ด้วย token ของตัวเองได้ `(200, {'ratings': []})` และ `s.cookies.keys()` ได้ `['AWSALB', 'AWSALBCORS']` คือ cookie ของ load balancer ที่ session เก็บไว้ส่งกลับไปทุก request
+  - Step 0.12: รัน `pytest -v test_no_session.py` 3 รอบ ทุกรอบสร้าง user ผ่าน (201) แต่ login ได้ 401 แทน 200 (`E assert 401 == 200`) เพราะ `requests.post` แต่ละครั้งไม่ได้ส่ง cookie AWSALB กลับไป load balancer จึงส่ง login ไปที่ server ตัวอื่นซึ่งไม่มี user นี้ ผลไปทางเดียวกับในชีทที่ login fail 46 จาก 49 ครั้ง test นี้จะผ่านก็ต่อเมื่อบังเอิญได้ server ตัวเดิมทั้งสอง request ผลจึงขึ้นกับดวงทั้งที่โค้ดไม่เปลี่ยน ซึ่งก็คือ flaky test หลังบันทึกผลแล้วจึงลบ test_no_session.py ออก
 - Step 0.16, blocks of "how many of the three tools are excluded":
 
 ## Defect report
